@@ -1,56 +1,53 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 import database as db
 
-# إعداد الصفحة
-st.set_page_config(page_title="منصة التدريب الاحترافية", layout="wide")
+st.set_page_config(page_title="برنامجك المخصص", layout="centered")
 
-# تهيئة قاعدة البيانات
+# إعداد قاعدة البيانات
 db.init_db()
 
-# --- دالة التحقق من الجهاز ---
-def is_session_valid(code):
-    if 'active_code' not in st.session_state:
-        st.session_state['active_code'] = None
-    
-    if st.session_state['active_code'] is None:
-        st.session_state['active_code'] = code
-        return True
-    return st.session_state['active_code'] == code
+# شريط التقدم (Progress Bar)
+if 'step' not in st.session_state: st.session_state['step'] = 0
 
-# --- الواجهة ---
-st.title("⚡ منصة التدريب الشخصي")
+def progress_bar():
+    steps = [0, 25, 50, 75, 100]
+    st.progress(steps[st.session_state['step']])
 
-code_input = st.text_input("أدخل كود الوصول الخاص بك", type="password")
+# --- القمع البيعي (Funnel) ---
+st.title("⚡ احصل على خطتك التدريبية")
+progress_bar()
 
-if st.button("دخول"):
-    user_data = db.get_user(code_input)
-    if user_data and is_session_valid(code_input):
-        st.session_state['user'] = user_data
-    else:
-        st.error("كود خاطئ أو مستخدم بالفعل على جهاز آخر!")
+if st.session_state['step'] == 0:
+    st.subheader("ما هو هدفك الأساسي؟")
+    goal = st.radio("", ["بناء عضلات", "خسارة دهون", "تحسين لياقة"])
+    if st.button("التالي"):
+        st.session_state['goal'] = goal
+        st.session_state['step'] = 1
+        st.rerun()
 
-if 'user' in st.session_state:
-    user = st.session_state['user']
-    today = datetime.now().strftime("%A") # جلب اليوم الحالي
-    
-    # خريطة الأيام
-    days = {"Saturday": user[3], "Sunday": user[4], "Monday": user[5], 
-            "Tuesday": user[6], "Wednesday": user[7], "Thursday": user[8], "Friday": user[9]}
-    
-    st.subheader(f"مرحباً {user[1]}، جدولك اليوم ({today}) هو:")
-    st.info(days.get(today, "يوم راحة"))
-    
-    # قسم التمارين مع الفيديو
-    st.divider()
-    st.subheader("فيديو تعليمي للتمرين")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # ضع رابط تمرينك هنا
-    
-    # حاسبة الماكروز
-    st.divider()
-    st.header("🧮 حاسبة الاحتياج اليومي")
-    weight = st.number_input("الوزن (كجم)", 40, 150)
-    if st.button("احسب"):
-        st.success(f"احتياجك للبروتين: {weight * 2} جرام")
-        st.write("ملاحظة: هذا تقدير تقريبي.")
+elif st.session_state['step'] == 1:
+    st.subheader("كيف تصف جسمك الحالي؟")
+    # هنا يمكنك إضافة صور توضيحية باستخدام st.image
+    body = st.radio("", ["نحيف", "متوسط", "سمنة"])
+    if st.button("التالي"):
+        st.session_state['body'] = body
+        st.session_state['step'] = 2
+        st.rerun()
+
+elif st.session_state['step'] == 2:
+    st.subheader("مستوى نشاطك اليومي؟")
+    activity = st.select_slider("", ["خامل", "نشيط", "رياضي جداً"])
+    name = st.text_input("اسمك الكريم؟")
+    if st.button("تجهيز خطتي المخصصة 🚀"):
+        db.save_lead(name, st.session_state['goal'], st.session_state['body'], activity)
+        st.session_state['step'] = 3
+        st.rerun()
+
+elif st.session_state['step'] == 3:
+    st.balloons()
+    st.success("تم تحليل بياناتك بنجاح!")
+    st.write("### برنامجك المخصص جاهز الآن.")
+    st.info("سجل دخولك بالكود الذي سيرسله لك المدرب للبدء.")
+    if st.button("ابدأ من جديد"):
+        st.session_state['step'] = 0
+        st.rerun()
