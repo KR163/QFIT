@@ -1,40 +1,55 @@
 import streamlit as st
 import database as db
 
+# إعداد الصفحة
+st.set_page_config(page_title="منصة Q-Fit الاحترافية", layout="wide", page_icon="⚡")
+
+# تنسيق CSS مخصص للمظهر الاحترافي
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: white; }
+    div[data-testid="stMetricValue"] { color: #00ffcc; }
+    .css-1r6slb0 { background-color: #161b22; border-radius: 10px; padding: 20px; }
+    </style>
+""", unsafe_allow_html=True)
+
 db.init_db()
 
-st.title("⚡ نظام إدارة التدريب")
+# القائمة الجانبية
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/3043/3043233.png", width=100)
+    st.title("لوحة تحكم Q-Fit")
+    menu = st.radio("القائمة:", ["تسجيل الدخول", "إدارة المدرب"])
 
-# كلمة سر المدرب
-ADMIN_CODE = "ADMIN1"
-
-password = st.text_input("كود الدخول:", type="password")
-
-if password == ADMIN_CODE:
-    st.header("⚙️ لوحة تحكم المدرب")
-    
-    # نموذج إضافة متدرب جديد
-    with st.form("add_user_form"):
-        name = st.text_input("اسم المتدرب")
-        code = st.text_input("كود المتدرب (مثال: 6381)")
-        goal = st.text_input("الهدف")
-        submit = st.form_submit_button("إضافة المتدرب")
-        
-        if submit:
-            db.add_user(code, name, goal)
-            st.success(f"تم إضافة {name} بنجاح!")
-
-    # عرض قائمة المتدربين
-    st.subheader("قائمة المتدربين الحاليين")
-    users = db.get_all_users()
-    for u in users:
-        st.write(f"👤 **{u[1]}** | 🔑 كود: `{u[0]}` | 🎯 هدف: {u[2]}")
-
-elif password != "" and password != ADMIN_CODE:
-    # هنا يدخل المتدرب (نواف مثلاً)
-    user_data = db.get_user(password) # استدعاء من قاعدة البيانات
-    if user_data:
-        st.success(f"أهلاً بك يا {user_data[1]}! كودك: {user_data[0]}")
-        st.write(f"هدفنا الحالي: {user_data[2]}")
+if menu == "إدارة المدرب":
+    password = st.text_input("كلمة سر المدرب", type="password")
+    if password == "ADMIN1":
+        st.header("⚙️ إضافة متدرب جديد")
+        with st.form("add_user"):
+            c1, c2 = st.columns(2)
+            name = c1.text_input("اسم المتدرب")
+            code = c2.text_input("الكود")
+            goal = st.text_input("الهدف")
+            sat = st.text_input("تمارين السبت")
+            submit = st.form_submit_button("إضافة")
+            if submit:
+                db.add_user(code, name, goal, sat, "", "", "", "", "", "")
+                st.success("تم إضافة المتدرب!")
     else:
-        st.error("كود غير صحيح!")
+        st.warning("يرجى إدخال كلمة سر المدرب")
+
+elif menu == "تسجيل الدخول":
+    st.title("مرحباً بك في عالم الاحتراف")
+    code = st.text_input("أدخل كودك الشخصي:")
+    if st.button("دخول"):
+        user = db.get_user(code)
+        if user:
+            # عرض البيانات كبطاقات مرتبة
+            st.success(f"أهلاً {user[1]}")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("هدفك", user[2])
+            with col2:
+                st.info(f"تمرين اليوم: {user[3]}")
+        else:
+            st.error("كود غير صحيح")
