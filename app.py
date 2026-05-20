@@ -1,53 +1,40 @@
 import streamlit as st
 import database as db
 
-st.set_page_config(page_title="برنامجك المخصص", layout="centered")
-
-# إعداد قاعدة البيانات
 db.init_db()
 
-# شريط التقدم (Progress Bar)
-if 'step' not in st.session_state: st.session_state['step'] = 0
+st.title("⚡ نظام إدارة التدريب")
 
-def progress_bar():
-    steps = [0, 25, 50, 75, 100]
-    st.progress(steps[st.session_state['step']])
+# كلمة سر المدرب
+ADMIN_CODE = "ADMIN1"
 
-# --- القمع البيعي (Funnel) ---
-st.title("⚡ احصل على خطتك التدريبية")
-progress_bar()
+password = st.text_input("كود الدخول:", type="password")
 
-if st.session_state['step'] == 0:
-    st.subheader("ما هو هدفك الأساسي؟")
-    goal = st.radio("", ["بناء عضلات", "خسارة دهون", "تحسين لياقة"])
-    if st.button("التالي"):
-        st.session_state['goal'] = goal
-        st.session_state['step'] = 1
-        st.rerun()
+if password == ADMIN_CODE:
+    st.header("⚙️ لوحة تحكم المدرب")
+    
+    # نموذج إضافة متدرب جديد
+    with st.form("add_user_form"):
+        name = st.text_input("اسم المتدرب")
+        code = st.text_input("كود المتدرب (مثال: 6381)")
+        goal = st.text_input("الهدف")
+        submit = st.form_submit_button("إضافة المتدرب")
+        
+        if submit:
+            db.add_user(code, name, goal)
+            st.success(f"تم إضافة {name} بنجاح!")
 
-elif st.session_state['step'] == 1:
-    st.subheader("كيف تصف جسمك الحالي؟")
-    # هنا يمكنك إضافة صور توضيحية باستخدام st.image
-    body = st.radio("", ["نحيف", "متوسط", "سمنة"])
-    if st.button("التالي"):
-        st.session_state['body'] = body
-        st.session_state['step'] = 2
-        st.rerun()
+    # عرض قائمة المتدربين
+    st.subheader("قائمة المتدربين الحاليين")
+    users = db.get_all_users()
+    for u in users:
+        st.write(f"👤 **{u[1]}** | 🔑 كود: `{u[0]}` | 🎯 هدف: {u[2]}")
 
-elif st.session_state['step'] == 2:
-    st.subheader("مستوى نشاطك اليومي؟")
-    activity = st.select_slider("", ["خامل", "نشيط", "رياضي جداً"])
-    name = st.text_input("اسمك الكريم؟")
-    if st.button("تجهيز خطتي المخصصة 🚀"):
-        db.save_lead(name, st.session_state['goal'], st.session_state['body'], activity)
-        st.session_state['step'] = 3
-        st.rerun()
-
-elif st.session_state['step'] == 3:
-    st.balloons()
-    st.success("تم تحليل بياناتك بنجاح!")
-    st.write("### برنامجك المخصص جاهز الآن.")
-    st.info("سجل دخولك بالكود الذي سيرسله لك المدرب للبدء.")
-    if st.button("ابدأ من جديد"):
-        st.session_state['step'] = 0
-        st.rerun()
+elif password != "" and password != ADMIN_CODE:
+    # هنا يدخل المتدرب (نواف مثلاً)
+    user_data = db.get_user(password) # استدعاء من قاعدة البيانات
+    if user_data:
+        st.success(f"أهلاً بك يا {user_data[1]}! كودك: {user_data[0]}")
+        st.write(f"هدفنا الحالي: {user_data[2]}")
+    else:
+        st.error("كود غير صحيح!")
